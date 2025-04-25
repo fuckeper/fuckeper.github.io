@@ -329,6 +329,10 @@ export default function ResultsPage() {
                           <dd className="mt-1 text-sm text-gray-900 dark:text-white">R$ {selectedAccount.donations}</dd>
                         </div>
                         <div className="col-span-1">
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Billing Balance</dt>
+                          <dd className="mt-1 text-sm text-gray-900 dark:text-white">$ {selectedAccount.billingBalance}</dd>
+                        </div>
+                        <div className="col-span-1">
                           <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Friends</dt>
                           <dd className="mt-1 text-sm text-gray-900 dark:text-white">{selectedAccount.friendsCount}</dd>
                         </div>
