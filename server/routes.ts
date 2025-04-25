@@ -71,12 +71,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
+  // Защита от дублирования запросов на валидацию
+  const activeValidationRequests = new Set<string>();
+  
   // POST /api/validate - Валидация куков
   app.post("/api/validate", async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Логируем информацию о запросе с уникальным requestId для отслеживания
+      const requestId = Math.random().toString(36).substring(2, 10);
       logger.info('Validate request received', { 
         ip: req.ip, 
-        contentLength: req.headers['content-length'] 
+        contentLength: req.headers['content-length'],
+        requestId
+      });
+      
+      // Проверка на дублирование запросов - защита на уровне middleware
+      const requestSignature = JSON.stringify(req.body);
+      if (activeValidationRequests.has(requestSignature)) {
+        logger.warn('Duplicate validation request detected', {
+          ip: req.ip,
+          requestId
+        });
+        
+        return res.status(429).json({
+          message: "A validation request with identical cookies is already being processed",
+          status: queueService.getStatus()
+        });
+      }
+      
+      // Добавляем запрос в активные
+      activeValidationRequests.add(requestSignature);
+      
+      // Автоматическое удаление из списка активных запросов при завершении
+      res.on('finish', () => {
+        activeValidationRequests.delete(requestSignature);
       });
       
       // Валидируем тело запроса
@@ -84,7 +112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!validation.success) {
         logger.warn('Invalid validation request', { 
-          errors: validation.error.errors 
+          errors: validation.error.errors,
+          requestId 
         });
         
         return res.status(400).json({ 

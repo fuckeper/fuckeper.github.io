@@ -68,43 +68,71 @@ export default function ProcessingPage() {
     },
   });
 
+  // Флаг для отслеживания статуса валидации, чтобы предотвратить повторные запросы
+  const [validationStarted, setValidationStarted] = useState(false);
+
   // Start the validation process when the component mounts
   useEffect(() => {
+    // Проверка на отсутствие куков
     if (!cookies.length) {
       setLocation("/");
       return;
     }
 
+    // Предотвращение повторного запуска валидации, если она уже запущена
+    if (validationStarted || validateMutation.isPending) {
+      return;
+    }
+
+    // Устанавливаем флаг валидации
+    setValidationStarted(true);
+
+    // Создаем EventSource для получения статуса
     const statusEventSource = new EventSource("/api/validate/status");
     
     statusEventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setProcessedCount(data.processed);
-      setProcessingStatus({
-        validCount: data.valid,
-        invalidCount: data.invalid,
-      });
-      
-      if (data.latestLog) {
-        setLogEntries((prev) => [data.latestLog, ...prev.slice(0, 49)]);
-      }
-      
-      if (data.complete) {
-        statusEventSource.close();
+      try {
+        const data = JSON.parse(event.data);
+        setProcessedCount(data.processed);
+        setProcessingStatus({
+          validCount: data.valid,
+          invalidCount: data.invalid,
+        });
+        
+        if (data.latestLog) {
+          setLogEntries((prev) => [data.latestLog, ...prev.slice(0, 49)]);
+        }
+        
+        if (data.complete) {
+          statusEventSource.close();
+        }
+      } catch (error) {
+        console.error("Error parsing SSE data:", error);
       }
     };
     
-    statusEventSource.onerror = () => {
+    statusEventSource.onerror = (error) => {
+      console.error("SSE Error:", error);
       statusEventSource.close();
     };
     
-    // Start the validation process
-    validateMutation.mutate(cookies);
+    // Start the validation process только если еще не запущена
+    if (!validateMutation.isPending) {
+      console.log("Starting cookie validation for", cookies.length, "cookies");
+      validateMutation.mutate(cookies);
+    }
     
     return () => {
       statusEventSource.close();
     };
-  }, [cookies, setLocation, validateMutation, setProcessingStatus]);
+  }, [cookies, setLocation, validateMutation, setProcessingStatus, validationStarted]);
+  
+  // Эффект для сброса флага валидации при изменении массива cookies
+  useEffect(() => {
+    return () => {
+      setValidationStarted(false);
+    };
+  }, [cookies]);
 
   return (
     <>
