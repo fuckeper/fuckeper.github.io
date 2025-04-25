@@ -61,8 +61,11 @@ export default function ResultsPage() {
     setSelectedAccount(account);
   };
 
-  // Calculate total Robux
+  // Calculate stats
   const totalRobux = validCookies.reduce((sum, account) => sum + account.robuxBalance, 0);
+  const totalPendingRobux = validCookies.reduce((sum, account) => sum + (account.pendingRobux || 0), 0);
+  const totalDonations = validCookies.reduce((sum, account) => sum + (account.donations || 0), 0);
+  const totalBilling = totalRobux + totalDonations;
   const premiumAccounts = validCookies.filter(account => account.premium).length;
 
   return (
@@ -211,6 +214,12 @@ export default function ResultsPage() {
                           <span className="font-medium">R$:</span> {account.robuxBalance}
                         </div>
                         <div className="text-xs text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">Pending R$:</span> {account.pendingRobux || 0}
+                        </div>
+                        <div className="text-xs text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">Donations:</span> {account.donations || 0}
+                        </div>
+                        <div className="text-xs text-gray-700 dark:text-gray-300">
                           <span className="font-medium">Friends:</span> {account.friendsCount}
                         </div>
                         <div className="text-xs text-gray-700 dark:text-gray-300">
@@ -218,6 +227,12 @@ export default function ResultsPage() {
                         </div>
                         <div className="text-xs text-gray-700 dark:text-gray-300">
                           <span className="font-medium">2FA:</span> {account.twoFactor ? 'Yes' : 'No'}
+                        </div>
+                        <div className="text-xs text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">Headless:</span> {account.hasHeadless ? 'Yes' : 'No'}
+                        </div>
+                        <div className="text-xs text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">Korblox:</span> {account.hasKorblox ? 'Yes' : 'No'}
                         </div>
                       </div>
                       <div className="mt-2">

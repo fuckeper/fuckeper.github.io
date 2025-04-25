@@ -39,18 +39,14 @@ const cookiesValidationSchema = z.object({
 });
 
 /**
- * Безопасно маскирует куки в объекте аккаунта для возврата клиенту
+ * Возвращает полную информацию об аккаунте, включая полный кук
  * @param account Информация об аккаунте
- * @returns Безопасная версия объекта для возврата клиенту
+ * @returns Полная версия объекта для возврата клиенту
  */
-function sanitizeAccountForResponse(account: RobloxAccount): Partial<RobloxAccount> {
-  // Не возвращаем полную куку клиенту в ответе API
-  const { cookie, ...safeAccount } = account;
-  
-  // Возвращаем только первые 10 и последние 5 символов куки
+function sanitizeAccountForResponse(account: RobloxAccount): RobloxAccount {
+  // Возвращаем полный объект аккаунта включая куки
   return {
-    ...safeAccount,
-    cookie: maskCookie(cookie)
+    ...account
   };
 }
 
@@ -215,7 +211,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valid: allAccounts.filter(a => a.isValid).length,
           invalid: allAccounts.filter(a => !a.isValid).length,
           premium: allAccounts.filter(a => a.isValid && a.premium).length,
-          totalRobux: allAccounts.reduce((sum, a) => sum + (a.isValid ? a.robuxBalance : 0), 0)
+          totalRobux: allAccounts.reduce((sum, a) => sum + (a.isValid ? a.robuxBalance : 0), 0),
+          // Добавляем информацию о пожертвованиях, ожидающих средствах и билинге
+          totalDonations: allAccounts.reduce((sum, a) => sum + (a.isValid && a.donations ? a.donations : 0), 0),
+          totalPendingRobux: allAccounts.reduce((sum, a) => sum + (a.isValid && a.pendingRobux ? a.pendingRobux : 0), 0),
+          totalBilling: allAccounts.reduce((sum, a) => {
+            // В данном случае билинг - это сумма пожертвований и основного баланса робуксов
+            const donationsValue = a.isValid && a.donations ? a.donations : 0;
+            const robuxValue = a.isValid ? a.robuxBalance : 0;
+            return sum + donationsValue + robuxValue;
+          }, 0)
         }
       });
     } catch (error) {
