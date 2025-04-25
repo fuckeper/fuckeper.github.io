@@ -12,6 +12,15 @@ export interface RobloxAccount {
   hasHeadless: boolean;
   hasKorblox: boolean;
   avatarUrl: string;
+  displayName: string;
+  accountAge: number;
+  emailVerified: boolean;
+  twoFactor: boolean;
+  hasPin: boolean;
+  voiceChat: boolean;
+  friendsCount: number;
+  isAbove13: boolean;
+  description: string;
   processedAt: string;
 }
 

