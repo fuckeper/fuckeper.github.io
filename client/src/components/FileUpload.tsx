@@ -240,7 +240,7 @@ export default function FileUpload({ onStartProcessing }: FileUploadProps) {
                     No valid Roblox cookies found in the uploaded file. Please make sure
                     your file contains cookies starting with{" "}
                     <code className="text-xs bg-red-100 dark:bg-red-800 px-1 py-0.5 rounded">
-                      ._|WARNING:-DO-NOT-SHARE-THIS...
+                      _|WARNING:-DO-NOT-SHARE-THIS...
                     </code>
                   </p>
                 </div>

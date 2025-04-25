@@ -10,6 +10,20 @@ const ROBLOX_USER_ENDPOINT = "/users/v1/users/authenticated";
 const ROBLOX_PREMIUM_ENDPOINT = "/premiumfeatures/v1/users/{userId}/validate-membership";
 const ROBLOX_INVENTORY_ENDPOINT = "/inventory/v1/users/{userId}/items/Asset/{assetId}";
 
+/**
+ * Format a cookie for use in requests
+ * @param cookie Raw Roblox cookie
+ * @returns Properly formatted cookie string
+ */
+function formatCookie(cookie: string): string {
+  // If the cookie already starts with _|WARNING, it's in the proper format
+  if (cookie.startsWith('_|WARNING')) {
+    return `.ROBLOSECURITY=${cookie}`;
+  }
+  // If it doesn't, it might be missing the leading dot
+  return `.ROBLOSECURITY=.${cookie}`;
+}
+
 // Special item IDs
 const HEADLESS_ASSET_ID = "134082579";
 const KORBLOX_ASSET_ID = "139607718";
@@ -130,7 +144,7 @@ async function fetchUserInfo(cookie: string): Promise<any> {
   try {
     const response = await fetch(`${ROBLOX_API_BASE}${ROBLOX_USER_ENDPOINT}`, {
       headers: {
-        Cookie: `.ROBLOSECURITY=${cookie}`,
+        Cookie: formatCookie(cookie),
       },
     });
     
