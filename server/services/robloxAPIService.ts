@@ -285,44 +285,35 @@ class RobloxAPIService {
   }
 
   /**
-   * Имитирует проверку наличия привязанных карт оплаты
+   * Симулирует проверку наличия привязанных карт оплаты
    * @param cookie Roblox cookie
+   * @param userId ID пользователя
    * @returns Информация о привязанных картах
    */
-  async getPaymentCards(cookie: string): Promise<{ hasCards: boolean; cardsCount: number }> {
+  async getPaymentCards(cookie: string, userId: string | number): Promise<{ hasCards: boolean; cardsCount: number }> {
     try {
-      // Для имитации проверки карт используем данные из информации о пользователе
-      // которая уже собирается другими методами
-      // Это позволит симулировать случайное распределение наличия карт
+      // Вместо использования API, которые могут быть недоступны или требовать определенных прав,
+      // мы будем симулировать наличие карт на основе userId
       
-      // Получаем баланс пользователя и другие данные
-      const balanceResponse = await this.safeGet<{ robux?: number }>(
-        'https://economy.roblox.com/v1/user/currency',
-        { headers: this.createHeaders(cookie) },
-        { robux: 0 }
-      );
+      // Преобразуем userId в число для вычислений
+      const userIdNumber = typeof userId === 'string' ? parseInt(userId) : userId;
       
-      const premiumResponse = await this.safeGet<{ isPremium?: boolean }>(
-        'https://premiumfeatures.roblox.com/v1/user/validate-membership',
-        { headers: this.createHeaders(cookie) },
-        { isPremium: false }
-      );
+      // Создаем детерминированный, но случайный генератор на основе userId
+      // Это позволит всегда получать одинаковый результат для одного и того же пользователя
+      const randomSeed = userIdNumber % 100; // Получаем число от 0 до 99
       
-      // Симулируем наличие карт на основе баланса и премиум-статуса
-      // Если у пользователя есть премиум или баланс больше 1000, вероятнее всего у него есть карта
-      const hasPremium = premiumResponse.isPremium || false;
-      const hasHighBalance = (balanceResponse.robux || 0) > 1000;
+      // На основе "случайного" числа определяем, есть ли у пользователя карты
+      // Допустим, у 30% пользователей есть карты
+      const hasCards = randomSeed < 30;
       
-      // Симулируем наличие карт
-      // Если есть премиум аккаунт, скорее всего есть и карта
-      const hasCards = hasPremium || hasHighBalance;
+      // Количество карт - от 1 до 3, в зависимости от значения randomSeed
+      // Так, пользователи с меньшими значениями randomSeed имеют больше карт
+      const cardsCount = hasCards ? 
+        (randomSeed < 10 ? 3 : (randomSeed < 20 ? 2 : 1)) : 0;
       
-      // Количество карт генерируется случайным образом от 1 до 3, если они есть
-      const cardsCount = hasCards ? Math.floor(Math.random() * 3) + 1 : 0;
-      
-      logger.info('Payment cards information retrieved (simulated)', { 
-        hasPremium,
-        hasHighBalance,
+      logger.info('Payment cards information simulated', { 
+        userId,
+        randomSeed,
         hasCards,
         cardsCount
       });
