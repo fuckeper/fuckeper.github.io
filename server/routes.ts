@@ -32,9 +32,10 @@ function errorHandler(err: any, req: Request, res: Response, next: NextFunction)
 
 /**
  * Схема для валидации запроса на проверку куков
+ * Roblox cookies могут достигать 4000+ символов
  */
 const cookiesValidationSchema = z.object({
-  cookies: z.array(z.string().min(20).max(1000)).min(1).max(1000)
+  cookies: z.array(z.string().min(20).max(5000)).min(1).max(1000)
 });
 
 /**
