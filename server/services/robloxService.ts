@@ -27,6 +27,10 @@ function formatCookie(cookie: string): string {
  * @param cookies Array of cookies to validate
  */
 export async function validateCookies(cookies: string[]): Promise<void> {
+  if (!Array.isArray(cookies) || cookies.length === 0) {
+    throw new Error("Invalid or empty cookies array provided");
+  }
+
   // Reset the queue status
   queueService.resetStatus(cookies.length);
   

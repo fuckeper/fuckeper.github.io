@@ -12,6 +12,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/validate - Validate cookies
   app.post("/api/validate", async (req, res) => {
     try {
+      if (!req.body || !req.body.cookies) {
+        return res.status(400).json({ message: "Missing cookies array in request body" });
+      }
+
       // Validate request body
       const schema = z.object({
         cookies: z.array(z.string()),
