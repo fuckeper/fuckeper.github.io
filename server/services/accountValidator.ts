@@ -28,6 +28,7 @@ const defaultAccountValues: Omit<RobloxAccount, 'cookie' | 'isValid' | 'processe
   pendingRobux: 0,
   premium: false,
   donations: 0,
+  billingBalance: 0,
   rap: 0,
   hasHeadless: false,
   hasKorblox: false,
@@ -92,9 +93,13 @@ class AccountValidator {
         return null;
       }
       
-      // Получить данные о балансе
+      // Получить данные о балансе в Robux
       const currencyData = await robloxAPI.getUserCurrency(cleanCookie);
       const robux = currencyData.robux || 0;
+      
+      // Получить данные о балансе биллинга
+      const billingData = await robloxAPI.getUserBillingBalance(cleanCookie);
+      const billingBalance = billingData.balance || 0;
       
       // Получить информацию о пользователе
       const userInfo = await robloxAPI.getUserInfo(cleanCookie);
@@ -137,6 +142,7 @@ class AccountValidator {
         pendingRobux: transactionsData?.pendingRobuxTotal || 0,
         premium: Boolean(settings.isPremium),
         donations: transactionsData?.incomingRobuxTotal || 0,
+        billingBalance: billingBalance,
         rap: 0, // Требуется дополнительный запрос для получения RAP
         hasHeadless,
         hasKorblox,

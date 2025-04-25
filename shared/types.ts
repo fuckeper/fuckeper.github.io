@@ -4,10 +4,11 @@ export interface RobloxAccount {
   isValid: boolean;
   username: string;
   userId: string;
-  robuxBalance: number;
-  pendingRobux: number;
+  robuxBalance: number;   // Текущий баланс Robux
+  pendingRobux: number;   // Ожидающие средства (в Robux)
   premium: boolean;
-  donations: number;
+  donations: number;      // Пожертвования (в Robux)
+  billingBalance: number; // Баланс в долларах/валюте на кошельке Roblox
   rap: number;
   hasHeadless: boolean;
   hasKorblox: boolean;

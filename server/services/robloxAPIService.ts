@@ -118,9 +118,9 @@ class RobloxAPIService {
   }
   
   /**
-   * Получить данные о балансе пользователя
+   * Получить данные о балансе пользователя в Robux
    * @param cookie Roblox cookie
-   * @returns Информация о балансе
+   * @returns Информация о балансе в Robux
    */
   async getUserCurrency(cookie: string): Promise<{ robux?: number }> {
     return this.safeGet<{ robux?: number }>(
@@ -128,6 +128,27 @@ class RobloxAPIService {
       { headers: this.createHeaders(cookie) },
       { robux: 0 }
     );
+  }
+  
+  /**
+   * Получить данные о балансе пользователя в реальной валюте (биллинг)
+   * @param cookie Roblox cookie
+   * @returns Информация о балансе в долларах или другой валюте
+   */
+  async getUserBillingBalance(cookie: string): Promise<{ balance?: number }> {
+    try {
+      // API для получения баланса в валюте (может отличаться, используйте правильный URL)
+      return this.safeGet<{ balance?: number }>(
+        'https://billing.roblox.com/v1/user/balance',
+        { headers: this.createHeaders(cookie) },
+        { balance: 0 }
+      );
+    } catch (error) {
+      logger.warn('Failed to get billing balance', { 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return { balance: 0 };
+    }
   }
   
   /**

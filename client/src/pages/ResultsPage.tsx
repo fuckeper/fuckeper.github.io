@@ -65,7 +65,7 @@ export default function ResultsPage() {
   const totalRobux = validCookies.reduce((sum, account) => sum + account.robuxBalance, 0);
   const totalPendingRobux = validCookies.reduce((sum, account) => sum + (account.pendingRobux || 0), 0);
   const totalDonations = validCookies.reduce((sum, account) => sum + (account.donations || 0), 0);
-  const totalBilling = totalRobux + totalDonations;
+  const totalBilling = validCookies.reduce((sum, account) => sum + (account.billingBalance || 0), 0);
   const premiumAccounts = validCookies.filter(account => account.premium).length;
 
   return (
@@ -234,6 +234,9 @@ export default function ResultsPage() {
                         </div>
                         <div className="text-xs text-gray-700 dark:text-gray-300">
                           <span className="font-medium">Donations:</span> {account.donations || 0}
+                        </div>
+                        <div className="text-xs text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">Billing $:</span> {account.billingBalance || 0}
                         </div>
                         <div className="text-xs text-gray-700 dark:text-gray-300">
                           <span className="font-medium">Friends:</span> {account.friendsCount}
