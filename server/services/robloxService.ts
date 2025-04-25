@@ -32,14 +32,14 @@ export async function validateCookies(cookies: string[]): Promise<void> {
   for (const cookie of cookies) {
     queueService.enqueue(async () => {
       try {
-        // Check if cookie is valid
-        const isValid = await checkCookieValid(cookie);
+        // Get detailed account info
+        const accountInfo = await checkCookieValid(cookie);
         
-        // Create account info object
-        const accountInfo: RobloxAccount = {
+        // Store the result
+        await storage.storeCookie(accountInfo || {
           cookie,
-          isValid,
-          username: isValid ? "Valid Account" : "",
+          isValid: false,
+          username: "",
           userId: "",
           robuxBalance: 0,
           pendingRobux: 0,
@@ -50,7 +50,7 @@ export async function validateCookies(cookies: string[]): Promise<void> {
           hasKorblox: false,
           avatarUrl: "",
           processedAt: new Date().toISOString(),
-        };
+        });
         
         // Store the result
         await storage.storeCookie(accountInfo);
