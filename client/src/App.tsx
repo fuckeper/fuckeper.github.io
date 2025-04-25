@@ -1,44 +1,38 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import HomePage from "@/pages/HomePage";
-import ProcessingPage from "@/pages/ProcessingPage";
-import ResultsPage from "@/pages/ResultsPage";
-import Header from "@/components/Header";
-import { ThemeProvider } from "@/components/ThemeToggle";
 
-function Router() {
-  return (
-    <div className="h-full flex flex-col">
-      <Header />
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Switch>
-            <Route path="/" component={HomePage} />
-            <Route path="/processing" component={ProcessingPage} />
-            <Route path="/results" component={ResultsPage} />
-            <Route component={NotFound} />
-          </Switch>
-        </div>
-      </main>
-    </div>
-  );
-}
+import { ThemeProvider } from "./components/ThemeToggle";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route, Router, Switch } from "wouter";
+import { Toaster } from "./components/ui/toaster";
+import { TooltipProvider } from "./components/ui/tooltip";
+import Header from "./components/Header";
+import HomePage from "./pages/HomePage";
+import ProcessingPage from "./pages/ProcessingPage";
+import ResultsPage from "./pages/ResultsPage";
+import NotFoundPage from "./pages/not-found";
 
-function App() {
+const queryClient = new QueryClient();
+
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <div className="min-h-screen bg-background text-foreground">
+            <Router>
+              <Header />
+              <main className="container mx-auto px-4 py-8">
+                <Switch>
+                  <Route path="/" component={HomePage} />
+                  <Route path="/processing" component={ProcessingPage} />
+                  <Route path="/results" component={ResultsPage} />
+                  <Route component={NotFoundPage} />
+                </Switch>
+              </main>
+            </Router>
+            <Toaster />
+          </div>
         </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
-
-export default App;
