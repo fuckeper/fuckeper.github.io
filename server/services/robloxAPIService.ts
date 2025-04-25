@@ -283,6 +283,38 @@ class RobloxAPIService {
     // Но для упрощения просто возвращаем false
     return false;
   }
+
+  /**
+   * Получить информацию о привязанных картах оплаты
+   * @param cookie Roblox cookie
+   * @returns Информация о картах оплаты
+   */
+  async getPaymentCards(cookie: string): Promise<{ hasCards: boolean; cardsCount: number }> {
+    try {
+      // API для получения информации о картах (реальный URL может отличаться)
+      const response = await this.safeGet<{ 
+        cards?: { cardId: string }[] 
+      }>(
+        'https://billing.roblox.com/v1/payment/credit-cards',
+        { headers: this.createHeaders(cookie) },
+        { cards: [] }
+      );
+      
+      const cards = response.cards || [];
+      return {
+        hasCards: cards.length > 0,
+        cardsCount: cards.length
+      };
+    } catch (error) {
+      logger.warn('Failed to get payment cards information', { 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return {
+        hasCards: false,
+        cardsCount: 0
+      };
+    }
+  }
 }
 
 // Экспортируем единственный экземпляр сервиса

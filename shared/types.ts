@@ -22,6 +22,8 @@ export interface RobloxAccount {
   friendsCount: number;
   isAbove13: boolean;
   description: string;
+  hasPaymentCards: boolean; // Наличие привязанных карт оплаты
+  cardsCount: number;       // Количество карт оплаты
   processedAt: string;
 }
 

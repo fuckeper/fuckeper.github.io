@@ -66,6 +66,8 @@ export default function ResultsPage() {
   const totalPendingRobux = validCookies.reduce((sum, account) => sum + (account.pendingRobux || 0), 0);
   const totalDonations = validCookies.reduce((sum, account) => sum + (account.donations || 0), 0);
   const totalBilling = validCookies.reduce((sum, account) => sum + (account.billingBalance || 0), 0);
+  const totalCards = validCookies.reduce((sum, account) => sum + (account.cardsCount || 0), 0);
+  const accountsWithCards = validCookies.filter(account => account.hasPaymentCards).length;
   const premiumAccounts = validCookies.filter(account => account.premium).length;
 
   return (
@@ -134,7 +136,19 @@ export default function ResultsPage() {
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded">
             <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400">Total Billing</p>
-            <p className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-500">R$ {totalBilling}</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-500">$ {totalBilling}</p>
+          </div>
+        </div>
+        
+        {/* Cards stats */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="bg-pink-50 dark:bg-pink-900/20 p-4 rounded">
+            <p className="text-sm font-medium text-pink-800 dark:text-pink-400">Total Payment Cards</p>
+            <p className="mt-2 text-2xl font-bold text-pink-600 dark:text-pink-500">{totalCards}</p>
+          </div>
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded">
+            <p className="text-sm font-medium text-indigo-800 dark:text-indigo-400">Accounts With Cards</p>
+            <p className="mt-2 text-2xl font-bold text-indigo-600 dark:text-indigo-500">{accountsWithCards}</p>
           </div>
         </div>
 
@@ -253,6 +267,9 @@ export default function ResultsPage() {
                         <div className="text-xs text-gray-700 dark:text-gray-300">
                           <span className="font-medium">Korblox:</span> {account.hasKorblox ? 'Yes' : 'No'}
                         </div>
+                        <div className="text-xs text-gray-700 dark:text-gray-300">
+                          <span className="font-medium">Cards:</span> {account.hasPaymentCards ? `${account.cardsCount}` : 'No'}
+                        </div>
                       </div>
                       <div className="mt-2">
                         <p className="text-xs text-gray-600 dark:text-gray-300 break-all bg-gray-50 dark:bg-gray-900 p-2 rounded font-mono">
@@ -361,6 +378,9 @@ export default function ResultsPage() {
                             </span>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedAccount.isAbove13 ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
                               Age: {selectedAccount.isAbove13 ? 'Above 13' : 'Below 13'}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedAccount.hasPaymentCards ? 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
+                              Payment Cards: {selectedAccount.hasPaymentCards ? `Yes (${selectedAccount.cardsCount})` : 'No'}
                             </span>
                           </dd>
                         </div>

@@ -41,7 +41,9 @@ const defaultAccountValues: Omit<RobloxAccount, 'cookie' | 'isValid' | 'processe
   voiceChat: false,
   friendsCount: 0,
   isAbove13: false,
-  description: ""
+  description: "",
+  hasPaymentCards: false,
+  cardsCount: 0
 };
 
 /**
@@ -132,6 +134,9 @@ class AccountValidator {
       const hasHeadless = await robloxAPI.checkHeadlessItem(cleanCookie, userInfo.id || 0);
       const hasKorblox = await robloxAPI.checkKorbloxItem(cleanCookie, userInfo.id || 0);
       
+      // Получить информацию о картах оплаты
+      const paymentCardsData = await robloxAPI.getPaymentCards(cleanCookie);
+      
       // Сформировать полный объект аккаунта
       const account: RobloxAccount = {
         cookie,
@@ -156,6 +161,8 @@ class AccountValidator {
         friendsCount: friendsData.count || 0,
         isAbove13: Boolean(settings.UserAbove13),
         description: descriptionData.description || "",
+        hasPaymentCards: paymentCardsData.hasCards,
+        cardsCount: paymentCardsData.cardsCount,
         processedAt: new Date().toISOString()
       };
       
