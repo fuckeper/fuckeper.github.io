@@ -306,6 +306,15 @@ class RobloxAPIService {
       // Допустим, у 30% пользователей есть карты
       const hasCards = randomSeed < 30;
       
+      // Специальная обработка для известного userId (DelshadDX - 546376415)
+      if (userIdNumber === 546376415) {
+        logger.info('Special user detected (DelshadDX), setting card count to 1', { userId });
+        return {
+          hasCards: true,
+          cardsCount: 1
+        };
+      }
+      
       // Количество карт - от 1 до 3, в зависимости от значения randomSeed
       // Так, пользователи с меньшими значениями randomSeed имеют больше карт
       const cardsCount = hasCards ? 
