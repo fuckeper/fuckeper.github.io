@@ -66,9 +66,10 @@ class QueueService {
           // чтобы равномерно распределить нагрузку на API и избежать блокировки
           const randomDelay = this.delayMs + Math.floor(Math.random() * 500);
           await new Promise(resolve => setTimeout(resolve, randomDelay));
-        } catch (error) {
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           logger.error(`Error processing task in worker ${workerId}`, { 
-            error: error.message || 'Unknown error'
+            error: errorMessage
           });
         }
       }

@@ -1,106 +1,235 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { validateCookies } from "./services/robloxService";
 import { queueService } from "./services/queueService";
+import { logger, maskCookie } from "./services/logger";
+import { RobloxAccount } from "@shared/types";
+
+/**
+ * Middleware для обработки ошибок
+ */
+function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  logger.error('API Error', { 
+    path: req.path,
+    method: req.method,
+    status,
+    error: message,
+    stack: err.stack
+  });
+  
+  res.status(status).json({
+    error: {
+      message: message,
+      status: status
+    }
+  });
+}
+
+/**
+ * Схема для валидации запроса на проверку куков
+ */
+const cookiesValidationSchema = z.object({
+  cookies: z.array(z.string().min(20).max(1000)).min(1).max(1000)
+});
+
+/**
+ * Безопасно маскирует куки в объекте аккаунта для возврата клиенту
+ * @param account Информация об аккаунте
+ * @returns Безопасная версия объекта для возврата клиенту
+ */
+function sanitizeAccountForResponse(account: RobloxAccount): Partial<RobloxAccount> {
+  // Не возвращаем полную куку клиенту в ответе API
+  const { cookie, ...safeAccount } = account;
+  
+  // Возвращаем только первые 10 и последние 5 символов куки
+  return {
+    ...safeAccount,
+    cookie: maskCookie(cookie)
+  };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Create HTTP server
+  // Создаем HTTP сервер
   const httpServer = createServer(app);
 
-  // POST /api/validate - Validate cookies
-  app.post("/api/validate", async (req, res) => {
-    try {
-      if (!req.body || !req.body.cookies) {
-        return res.status(400).json({ message: "Missing cookies array in request body" });
-      }
+  // Middleware для CORS
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    
+    next();
+  });
 
-      // Validate request body
-      const schema = z.object({
-        cookies: z.array(z.string()),
+  // POST /api/validate - Валидация куков
+  app.post("/api/validate", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      logger.info('Validate request received', { 
+        ip: req.ip, 
+        contentLength: req.headers['content-length'] 
       });
       
-      const validation = schema.safeParse(req.body);
+      // Валидируем тело запроса
+      const validation = cookiesValidationSchema.safeParse(req.body);
+      
       if (!validation.success) {
+        logger.warn('Invalid validation request', { 
+          errors: validation.error.errors 
+        });
+        
         return res.status(400).json({ 
-          message: "Invalid request body",
-          errors: validation.error.errors
+          message: "Invalid request format",
+          errors: validation.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message
+          }))
         });
       }
       
       const { cookies } = validation.data;
       
-      // Validate max number of cookies (1000)
-      if (cookies.length > 1000) {
-        return res.status(400).json({ 
-          message: "Too many cookies. Maximum allowed is 1000." 
-        });
-      }
+      // Логируем количество куков (без самих значений!)
+      logger.info('Starting cookie validation', { 
+        count: cookies.length
+      });
       
-      // Start validating cookies asynchronously
-      validateCookies(cookies);
+      // Начинаем асинхронную валидацию куков
+      await validateCookies(cookies);
       
-      // Return the current status
+      // Возвращаем текущий статус
+      const currentStatus = queueService.getStatus();
+      
       res.json({ 
-        message: "Validation started",
-        status: {
-          total: cookies.length,
-          processed: 0,
-          valid: 0,
-          invalid: 0
-        }
+        message: "Validation process started",
+        status: currentStatus
       });
     } catch (error) {
-      console.error("Error validating cookies:", error);
-      res.status(500).json({ message: "Internal server error" });
+      next(error);
     }
   });
 
-  // GET /api/validate/status - Get validation status (SSE)
-  app.get("/api/validate/status", (req, res) => {
-    // Set headers for SSE
+  // GET /api/validate/status - Получение статуса валидации (SSE)
+  app.get("/api/validate/status", (req: Request, res: Response) => {
+    // Устанавливаем заголовки для SSE
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
     
-    // Send initial status
+    logger.info('SSE connection established', { 
+      ip: req.ip 
+    });
+    
+    // Отправляем начальный статус
     const initialStatus = queueService.getStatus();
     res.write(`data: ${JSON.stringify(initialStatus)}\n\n`);
     
-    // Function to send updates
+    // Функция для отправки обновлений
     const sendUpdate = () => {
-      const status = queueService.getStatus();
-      res.write(`data: ${JSON.stringify(status)}\n\n`);
-      
-      // If processing is complete, close the connection
-      if (status.complete) {
+      try {
+        const status = queueService.getStatus();
+        res.write(`data: ${JSON.stringify(status)}\n\n`);
+        
+        // Если обработка завершена, закрываем соединение
+        if (status.complete) {
+          clearInterval(intervalId);
+          logger.info('SSE connection completed', { 
+            status: 'complete',
+            valid: status.valid,
+            invalid: status.invalid,
+            total: status.total
+          });
+        }
+      } catch (error) {
+        logger.error('Error sending SSE update', { 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
         clearInterval(intervalId);
       }
     };
     
-    // Set up interval to send updates
+    // Устанавливаем интервал для отправки обновлений
     const intervalId = setInterval(sendUpdate, 1000);
     
-    // Clean up on client disconnect
+    // Очищаем при отключении клиента
     req.on("close", () => {
       clearInterval(intervalId);
+      logger.info('SSE connection closed by client', { ip: req.ip });
     });
   });
 
-  // GET /api/stats - Get validation statistics
-  app.get("/api/stats", async (req, res) => {
+  // GET /api/stats - Получение статистики валидации
+  app.get("/api/stats", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Get all validated cookies
-      const allCookies = await storage.getAllCookies();
+      logger.info('Stats request received', { ip: req.ip });
       
-      res.json({ accounts: allCookies });
+      // Получаем все валидированные куки
+      const allAccounts = await storage.getAllCookies();
+      
+      // Безопасно возвращаем данные, маскируя куки
+      const safeAccounts = allAccounts.map(sanitizeAccountForResponse);
+      
+      res.json({ 
+        accounts: safeAccounts,
+        stats: {
+          total: allAccounts.length,
+          valid: allAccounts.filter(a => a.isValid).length,
+          invalid: allAccounts.filter(a => !a.isValid).length,
+          premium: allAccounts.filter(a => a.isValid && a.premium).length,
+          totalRobux: allAccounts.reduce((sum, a) => sum + (a.isValid ? a.robuxBalance : 0), 0)
+        }
+      });
     } catch (error) {
-      console.error("Error getting statistics:", error);
-      res.status(500).json({ message: "Internal server error" });
+      next(error);
     }
   });
+  
+  // DELETE /api/clear - Очистить все данные (куки, статусы)
+  app.delete("/api/clear", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      logger.info('Clear request received', { ip: req.ip });
+      
+      // Очищаем хранилище куков
+      await storage.clearAllCookies();
+      
+      // Очищаем очередь задач
+      queueService.clearQueue();
+      
+      res.json({ 
+        message: "All data cleared successfully" 
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // GET /api/logs - Получение логов обработки
+  app.get("/api/logs", (req: Request, res: Response, next: NextFunction) => {
+    try {
+      logger.info('Logs request received', { ip: req.ip });
+      
+      const logs = queueService.getLogs();
+      
+      res.json({ 
+        logs,
+        count: logs.length 
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Middleware для обработки ошибок (должен быть последним)
+  app.use(errorHandler);
 
   return httpServer;
 }

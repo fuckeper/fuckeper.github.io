@@ -70,8 +70,9 @@ class AccountValidator {
     try {
       const cleanCookie = formatCookie(cookie);
       return await robloxAPI.validateCookie(cleanCookie);
-    } catch (error) {
-      logger.warn('Cookie validation failed', { error: error.message });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.warn('Cookie validation failed', { error: errorMessage });
       return false;
     }
   }
@@ -160,8 +161,9 @@ class AccountValidator {
       });
       
       return account;
-    } catch (error) {
-      logger.error('Error getting account details', { error: error.message });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error getting account details', { error: errorMessage });
       return null;
     }
   }

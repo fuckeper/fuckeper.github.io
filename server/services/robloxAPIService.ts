@@ -1,7 +1,7 @@
 /**
  * Сервис для работы с API Roblox
  */
-import axios, { AxiosResponse, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosResponse, AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import { logger } from './logger';
 
 /**
@@ -108,9 +108,10 @@ class RobloxAPIService {
       });
       
       return response.status === 200;
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.warn('Cookie validation failed', { 
-        error: error.message || 'Unknown error'
+        error: errorMessage
       });
       return false;
     }
