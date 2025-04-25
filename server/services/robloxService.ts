@@ -20,6 +20,9 @@ function formatCookie(cookie: string): string {
   return cookie;
 }
 
+// Хранилище для проверки уникальности куков
+const processedCookies = new Set<string>();
+
 /**
  * Валидирует куки, обрабатывает результаты и сохраняет их
  * @param cookies Массив куков для валидации
@@ -30,11 +33,45 @@ export async function validateCookies(cookies: string[]): Promise<void> {
     throw new Error("Invalid or empty cookies array provided");
   }
 
-  // Сбрасываем статус очереди
-  queueService.resetStatus(cookies.length);
+  // Удаляем дубликаты куков из массива (преобразуя в массив и обратно)
+  const uniqueCookies = Array.from(new Set(cookies));
+  
+  // Фильтруем куки, которые уже обрабатывались
+  const newCookies = uniqueCookies.filter(cookie => !processedCookies.has(cookie));
+  
+  // Логируем информацию о дубликатах
+  if (uniqueCookies.length < cookies.length) {
+    logger.info('Duplicate cookies removed', { 
+      initialCount: cookies.length, 
+      uniqueCount: uniqueCookies.length 
+    });
+  }
+  
+  // Логируем информацию о ранее обработанных куках
+  if (newCookies.length < uniqueCookies.length) {
+    logger.info('Previously processed cookies skipped', { 
+      uniqueCount: uniqueCookies.length, 
+      newCount: newCookies.length 
+    });
+  }
+  
+  // Если все куки уже обработаны, возвращаем сообщение
+  if (newCookies.length === 0) {
+    logger.info('All cookies have been already processed');
+    return;
+  }
+  
+  // Добавляем все новые куки в список обработанных
+  newCookies.forEach(cookie => processedCookies.add(cookie));
+  
+  // Сбрасываем статус очереди с правильным количеством
+  queueService.resetStatus(newCookies.length);
+  
+  // Хранилище уже проверенных userId чтобы избежать дублей при сохранении
+  const processedUserIds = new Set<string>();
   
   // Добавляем задачи для проверки каждого куки
-  for (const cookie of cookies) {
+  for (const cookie of newCookies) {
     queueService.enqueue(async () => {
       try {
         // Получаем информацию об аккаунте
@@ -43,39 +80,78 @@ export async function validateCookies(cookies: string[]): Promise<void> {
         if (!accountInfo) {
           // Создаем и сохраняем невалидный аккаунт
           const invalidAccount = accountValidator.createInvalidAccount(cookie);
-          await storage.storeCookie(invalidAccount);
+          const isNew = await storage.storeCookie(invalidAccount);
           
-          // Обновляем статус очереди
-          queueService.processingComplete(false);
-          
-          // Добавляем запись в лог
-          queueService.addLogEntry(`✗ Невалидный куки`);
+          // Обновляем статус очереди только если это новый куки
+          if (isNew) {
+            queueService.processingComplete(false);
+            
+            // Добавляем запись в лог
+            queueService.addLogEntry(`✗ Невалидный куки`);
+          } else {
+            // Если куки уже был обработан, просто логируем это
+            logger.debug('Duplicate invalid cookie skipped');
+          }
           return;
         }
         
-        // Сохраняем результат
-        await storage.storeCookie(accountInfo);
+        // Проверяем, не обрабатывали ли мы уже этот userId
+        if (accountInfo.userId && processedUserIds.has(accountInfo.userId)) {
+          logger.info('Duplicate userId found', { 
+            userId: accountInfo.userId,
+            username: accountInfo.username
+          });
+          
+          // Обновляем статус очереди, но не сохраняем дубликат
+          queueService.processingComplete(true);
+          
+          // Добавляем запись в лог с пометкой о дубликате
+          queueService.addLogEntry(
+            `✓ Дубликат: ${accountInfo.username} | R$: ${accountInfo.robuxBalance} | Premium: ${accountInfo.premium ? 'Да' : 'Нет'}`
+          );
+          return;
+        }
         
-        // Обновляем статус очереди
-        queueService.processingComplete(true);
+        // Добавляем userId в список обработанных
+        if (accountInfo.userId) {
+          processedUserIds.add(accountInfo.userId);
+        }
         
-        // Добавляем запись в лог
-        queueService.addLogEntry(
-          `✓ Валидный: ${accountInfo.username} | R$: ${accountInfo.robuxBalance} | Premium: ${accountInfo.premium ? 'Да' : 'Нет'}`
-        );
+        // Сохраняем результат и проверяем, был ли куки новым
+        const isNew = await storage.storeCookie(accountInfo);
+        
+        // Обновляем статус очереди только если это новый куки
+        if (isNew) {
+          queueService.processingComplete(true);
+          
+          // Добавляем запись в лог
+          queueService.addLogEntry(
+            `✓ Валидный: ${accountInfo.username} | R$: ${accountInfo.robuxBalance} | Premium: ${accountInfo.premium ? 'Да' : 'Нет'}`
+          );
+        } else {
+          // Если куки уже был обработан, просто логируем это
+          logger.debug('Duplicate valid cookie skipped', {
+            username: accountInfo.username
+          });
+        }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error("Error validating cookie", { error: errorMessage });
         
         // Создаем и сохраняем невалидный аккаунт при ошибке
         const invalidAccount = accountValidator.createInvalidAccount(cookie);
-        await storage.storeCookie(invalidAccount);
+        const isNew = await storage.storeCookie(invalidAccount);
         
-        // Обновляем статус очереди
-        queueService.processingComplete(false);
-        
-        // Добавляем запись в лог
-        queueService.addLogEntry(`✗ Ошибка проверки куки - ${errorMessage}`);
+        // Обновляем статус очереди только если это новый куки
+        if (isNew) {
+          queueService.processingComplete(false);
+          
+          // Добавляем запись в лог
+          queueService.addLogEntry(`✗ Ошибка проверки куки - ${errorMessage}`);
+        } else {
+          // Если куки уже был обработан, просто логируем это
+          logger.debug('Duplicate invalid cookie with error skipped');
+        }
       }
     });
   }
