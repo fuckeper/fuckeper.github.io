@@ -285,28 +285,59 @@ class RobloxAPIService {
   }
 
   /**
-   * Получить информацию о привязанных картах оплаты
+   * Получить информацию о играх и картах пользователя
    * @param cookie Roblox cookie
-   * @returns Информация о картах оплаты
+   * @param userId ID пользователя
+   * @returns Информация о играх и картах
    */
-  async getPaymentCards(cookie: string): Promise<{ hasCards: boolean; cardsCount: number }> {
+  async getPaymentCards(cookie: string, userId: string | number): Promise<{ hasCards: boolean; cardsCount: number }> {
     try {
-      // API для получения информации о картах (реальный URL может отличаться)
-      const response = await this.safeGet<{ 
-        cards?: { cardId: string }[] 
+      // Проверяем игры пользователя через API develop
+      const gamesResponse = await this.safeGet<{ 
+        data?: { id: number }[]
       }>(
-        'https://billing.roblox.com/v1/payment/credit-cards',
+        `https://develop.roblox.com/v1/universes?creatorTargetId=${userId}&creatorType=User`,
         { headers: this.createHeaders(cookie) },
-        { cards: [] }
+        { data: [] }
       );
       
-      const cards = response.cards || [];
+      const games = gamesResponse.data || [];
+      
+      // Если у пользователя нет игр, сразу возвращаем результат
+      if (games.length === 0) {
+        return {
+          hasCards: false,
+          cardsCount: 0
+        };
+      }
+      
+      // Теперь получим информацию о играх, которые есть у пользователя
+      // Берем 5 первых игр для простоты
+      const universeIds = games.slice(0, 5).map(game => game.id);
+      const universeIdsParam = universeIds.join(',');
+      
+      // Получаем информацию о играх через games API
+      const gameDetailsResponse = await this.safeGet<{
+        data?: { id: number; name: string; placeVisits: number }[]
+      }>(
+        `https://games.roblox.com/v1/games?universeIds=${universeIdsParam}`,
+        { headers: this.createHeaders(cookie) },
+        { data: [] }
+      );
+      
+      const gameDetails = gameDetailsResponse.data || [];
+      
+      logger.info('User games retrieved successfully', { 
+        count: games.length,
+        detailsCount: gameDetails.length
+      });
+      
       return {
-        hasCards: cards.length > 0,
-        cardsCount: cards.length
+        hasCards: gameDetails.length > 0,
+        cardsCount: games.length  // Общее количество игр пользователя
       };
     } catch (error) {
-      logger.warn('Failed to get payment cards information', { 
+      logger.warn('Failed to get games information', { 
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       return {
