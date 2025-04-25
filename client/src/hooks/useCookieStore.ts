@@ -44,11 +44,24 @@ export const useCookieStore = create<CookieStore>()(
         invalidCount: status.invalidCount,
       }),
       
-      setResults: (results) => set({
-        results,
-        validCount: results.filter(r => r.isValid).length,
-        invalidCount: results.filter(r => !r.isValid).length,
-      }),
+      setResults: (results) => {
+        // Убедимся, что results - это массив перед использованием filter
+        if (Array.isArray(results)) {
+          set({
+            results,
+            validCount: results.filter(r => r.isValid).length,
+            invalidCount: results.filter(r => !r.isValid).length,
+          });
+        } else {
+          // Если results не массив, установим пустой массив
+          set({
+            results: [],
+            validCount: 0,
+            invalidCount: 0,
+          });
+          console.error("Results is not an array:", results);
+        }
+      },
       
       clearAllData: () => set({
         cookies: [],

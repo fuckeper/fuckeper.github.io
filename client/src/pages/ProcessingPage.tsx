@@ -31,9 +31,32 @@ export default function ProcessingPage() {
       const response = await apiRequest("POST", "/api/validate", { cookies });
       return response.json();
     },
-    onSuccess: (data: { accounts: RobloxAccount[] }) => {
-      setResults(data.accounts);
-      setLocation("/results");
+    onSuccess: async () => {
+      // Когда валидация завершена, запрашиваем результаты через API /api/stats
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        
+        // Убедимся, что accounts - это массив перед передачей в setResults
+        if (data && Array.isArray(data.accounts)) {
+          setResults(data.accounts);
+        } else {
+          setResults([]);
+          toast({
+            title: "Warning",
+            description: "No valid results were returned from the server",
+            variant: "destructive",
+          });
+        }
+        
+        setLocation("/results");
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: `Failed to get results: ${error.message}`,
+          variant: "destructive",
+        });
+      }
     },
     onError: (error) => {
       toast({

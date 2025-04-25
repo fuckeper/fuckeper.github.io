@@ -15,9 +15,9 @@ export default function ResultsPage() {
     }
   }, [results, setLocation]);
 
-  // Split results into valid and invalid
-  const validCookies = results.filter(account => account.isValid);
-  const invalidCookies = results.filter(account => !account.isValid);
+  // Split results into valid and invalid (защита от ошибок, если results не определен)
+  const validCookies = Array.isArray(results) ? results.filter(account => account.isValid) : [];
+  const invalidCookies = Array.isArray(results) ? results.filter(account => !account.isValid) : [];
 
   // Download valid cookies as TXT
   const downloadValidCookies = () => {
