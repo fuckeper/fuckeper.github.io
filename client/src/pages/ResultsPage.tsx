@@ -121,6 +121,22 @@ export default function ResultsPage() {
             <p className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-500">{premiumAccounts}</p>
           </div>
         </div>
+        
+        {/* Additional stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Total Donations</p>
+            <p className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-500">R$ {totalDonations}</p>
+          </div>
+          <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded">
+            <p className="text-sm font-medium text-cyan-800 dark:text-cyan-400">Pending Robux</p>
+            <p className="mt-2 text-2xl font-bold text-cyan-600 dark:text-cyan-500">R$ {totalPendingRobux}</p>
+          </div>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded">
+            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400">Total Billing</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-500">R$ {totalBilling}</p>
+          </div>
+        </div>
 
         {/* Export buttons */}
         {validCookies.length > 0 && (
