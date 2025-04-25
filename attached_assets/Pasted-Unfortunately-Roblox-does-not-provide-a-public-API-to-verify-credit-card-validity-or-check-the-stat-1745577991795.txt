@@ -1,0 +1,28 @@
+Unfortunately, Roblox does not provide a public API to verify credit card validity or check the status of Robux gift codes. However, you can utilize third-party APIs to validate credit card numbers before attempting a transaction on Roblox. ([Is there an API for telling whether a Robux Gift Code is valid? - Scripting Support - Developer Forum | Roblox](https://devforum.roblox.com/t/is-there-an-api-for-telling-whether-a-robux-gift-code-is-valid/2700616?utm_source=chatgpt.com))
+
+### ✅ Third-Party Credit Card Validation APIs
+
+1. **Credit Card Validator API by Digitally Amar**
+   - **Description**: This API allows you to verify the validity of credit card numbers and identify the card type based on its number pattern.
+   - **Access**: Available on RapidAPI.
+   - **Link**: [Credit Card Validator API](https://rapidapi.com/digitallyamar/api/credit-card-validator2) ([Credit Card Validator](https://www.selectdataset.com/dataset/ae13dbad344b377131eb3ad399675771?utm_source=chatgpt.com))
+
+2. **Neterror420 Credit Card Validator**
+   - **Description**: An open-source tool that checks if a credit card number has the proper format and detects the card type.
+   - **Access**: Available on GitHub.
+   - **Link**: [GitHub - Credit Card Validator](https://github.com/neterror420/Credit-Card-Validator) ([GitHub - neterror420/Credit-Card-Validator: Validate, Verify & Check Credit Card or Debit Card Number. The data you enter will not be saved.](https://github.com/neterror420/Credit-Card-Validator?utm_source=chatgpt.com))
+
+3. **PicPay Card Verification API**
+   - **Description**: This API endpoint validates the authenticity of a credit card provided by the cardholder, ensuring the card is not canceled, blocked, or subject to restrictions.
+   - **Access**: Available in PicPay's API documentation.
+   - **Link**: [PicPay Card Verification API](https://picpay.github.io/picpay-docs-ms-ecommerce-checkout/en/docs/api/card-verification/) ([Card Validation | API de Checkout](https://picpay.github.io/picpay-docs-ms-ecommerce-checkout/en/docs/api/card-verification/?utm_source=chatgpt.com))
+
+### ⚠️ Important Notes
+
+- **Roblox Payment Processing**: Roblox processes payments through third-party services like Stripe and Xsolla. They do not provide an API for checking the validity of credit cards or gift codes. For issues related to payment declines or pending charges, refer to Roblox's support articles:
+  - [Credit Card Declined or Pending Charges](https://en.help.roblox.com/hc/en-us/articles/360000359923-Credit-Card-Declined-or-Pending-Charges)
+  - [Prepaid Credit Card Errors](https://en.help.roblox.com/hc/en-us/articles/203312680-Prepaid-Credit-Card-Errors) ([Adding and Updating Payment Information – Roblox Support](https://en.help.roblox.com/hc/en-us/articles/203312560-Adding-and-Updating-Payment-Information?utm_source=chatgpt.com), [Is there an API for telling whether a Robux Gift Code is valid? - Scripting Support - Developer Forum | Roblox](https://devforum.roblox.com/t/is-there-an-api-for-telling-whether-a-robux-gift-code-is-valid/2700616?utm_source=chatgpt.com), [Credit Card Declined or Pending Charges – Roblox Support](https://en.help.roblox.com/hc/en-us/articles/360000359923-Credit-Card-Declined-or-Pending-Charges?utm_source=chatgpt.com))
+
+- **Gift Code Validation**: There is no public API to check the validity of Robux gift codes. If you encounter issues with gift codes, it's recommended to contact Roblox support directly.  ([Is there an API for telling whether a Robux Gift Code is valid? - Scripting Support - Developer Forum | Roblox](https://devforum.roblox.com/t/is-there-an-api-for-telling-whether-a-robux-gift-code-is-valid/2700616?utm_source=chatgpt.com))
+
+If you need assistance integrating any of these APIs into your application or have further questions, feel free to ask! 

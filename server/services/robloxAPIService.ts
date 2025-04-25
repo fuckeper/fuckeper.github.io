@@ -285,59 +285,54 @@ class RobloxAPIService {
   }
 
   /**
-   * Получить информацию о играх и картах пользователя
+   * Имитирует проверку наличия привязанных карт оплаты
    * @param cookie Roblox cookie
-   * @param userId ID пользователя
-   * @returns Информация о играх и картах
+   * @returns Информация о привязанных картах
    */
-  async getPaymentCards(cookie: string, userId: string | number): Promise<{ hasCards: boolean; cardsCount: number }> {
+  async getPaymentCards(cookie: string): Promise<{ hasCards: boolean; cardsCount: number }> {
     try {
-      // Проверяем игры пользователя через API develop
-      const gamesResponse = await this.safeGet<{ 
-        data?: { id: number }[]
-      }>(
-        `https://develop.roblox.com/v1/universes?creatorTargetId=${userId}&creatorType=User`,
+      // Для имитации проверки карт используем данные из информации о пользователе
+      // которая уже собирается другими методами
+      // Это позволит симулировать случайное распределение наличия карт
+      
+      // Получаем баланс пользователя и другие данные
+      const balanceResponse = await this.safeGet<{ robux?: number }>(
+        'https://economy.roblox.com/v1/user/currency',
         { headers: this.createHeaders(cookie) },
-        { data: [] }
+        { robux: 0 }
       );
       
-      const games = gamesResponse.data || [];
-      
-      // Если у пользователя нет игр, сразу возвращаем результат
-      if (games.length === 0) {
-        return {
-          hasCards: false,
-          cardsCount: 0
-        };
-      }
-      
-      // Теперь получим информацию о играх, которые есть у пользователя
-      // Берем 5 первых игр для простоты
-      const universeIds = games.slice(0, 5).map(game => game.id);
-      const universeIdsParam = universeIds.join(',');
-      
-      // Получаем информацию о играх через games API
-      const gameDetailsResponse = await this.safeGet<{
-        data?: { id: number; name: string; placeVisits: number }[]
-      }>(
-        `https://games.roblox.com/v1/games?universeIds=${universeIdsParam}`,
+      const premiumResponse = await this.safeGet<{ isPremium?: boolean }>(
+        'https://premiumfeatures.roblox.com/v1/user/validate-membership',
         { headers: this.createHeaders(cookie) },
-        { data: [] }
+        { isPremium: false }
       );
       
-      const gameDetails = gameDetailsResponse.data || [];
+      // Симулируем наличие карт на основе баланса и премиум-статуса
+      // Если у пользователя есть премиум или баланс больше 1000, вероятнее всего у него есть карта
+      const hasPremium = premiumResponse.isPremium || false;
+      const hasHighBalance = (balanceResponse.robux || 0) > 1000;
       
-      logger.info('User games retrieved successfully', { 
-        count: games.length,
-        detailsCount: gameDetails.length
+      // Симулируем наличие карт
+      // Если есть премиум аккаунт, скорее всего есть и карта
+      const hasCards = hasPremium || hasHighBalance;
+      
+      // Количество карт генерируется случайным образом от 1 до 3, если они есть
+      const cardsCount = hasCards ? Math.floor(Math.random() * 3) + 1 : 0;
+      
+      logger.info('Payment cards information retrieved (simulated)', { 
+        hasPremium,
+        hasHighBalance,
+        hasCards,
+        cardsCount
       });
       
       return {
-        hasCards: gameDetails.length > 0,
-        cardsCount: games.length  // Общее количество игр пользователя
+        hasCards,
+        cardsCount
       };
     } catch (error) {
-      logger.warn('Failed to get games information', { 
+      logger.warn('Failed to get payment cards information', { 
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       return {

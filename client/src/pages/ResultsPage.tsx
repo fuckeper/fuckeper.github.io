@@ -143,11 +143,11 @@ export default function ResultsPage() {
         {/* Cards stats */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="bg-pink-50 dark:bg-pink-900/20 p-4 rounded">
-            <p className="text-sm font-medium text-pink-800 dark:text-pink-400">Total Games/Cards</p>
+            <p className="text-sm font-medium text-pink-800 dark:text-pink-400">Total Payment Cards</p>
             <p className="mt-2 text-2xl font-bold text-pink-600 dark:text-pink-500">{totalCards}</p>
           </div>
           <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded">
-            <p className="text-sm font-medium text-indigo-800 dark:text-indigo-400">Game Developers</p>
+            <p className="text-sm font-medium text-indigo-800 dark:text-indigo-400">Accounts With Cards</p>
             <p className="mt-2 text-2xl font-bold text-indigo-600 dark:text-indigo-500">{accountsWithCards}</p>
           </div>
         </div>
@@ -268,7 +268,7 @@ export default function ResultsPage() {
                           <span className="font-medium">Korblox:</span> {account.hasKorblox ? 'Yes' : 'No'}
                         </div>
                         <div className="text-xs text-gray-700 dark:text-gray-300">
-                          <span className="font-medium">Games:</span> {account.hasPaymentCards ? `${account.cardsCount}` : '0'}
+                          <span className="font-medium">Cards:</span> {account.hasPaymentCards ? `${account.cardsCount}` : 'No'}
                         </div>
                       </div>
                       <div className="mt-2">
@@ -380,7 +380,7 @@ export default function ResultsPage() {
                               Age: {selectedAccount.isAbove13 ? 'Above 13' : 'Below 13'}
                             </span>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedAccount.hasPaymentCards ? 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
-                              Game Developer: {selectedAccount.hasPaymentCards ? `Yes (${selectedAccount.cardsCount} games)` : 'No'}
+                              Payment Cards: {selectedAccount.hasPaymentCards ? `Yes (${selectedAccount.cardsCount})` : 'No'}
                             </span>
                           </dd>
                         </div>

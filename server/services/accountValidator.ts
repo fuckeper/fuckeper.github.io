@@ -134,8 +134,8 @@ class AccountValidator {
       const hasHeadless = await robloxAPI.checkHeadlessItem(cleanCookie, userInfo.id || 0);
       const hasKorblox = await robloxAPI.checkKorbloxItem(cleanCookie, userInfo.id || 0);
       
-      // Получить информацию о картах/играх пользователя
-      const paymentCardsData = await robloxAPI.getPaymentCards(cleanCookie, userInfo.id || 0);
+      // Получить информацию о картах оплаты
+      const paymentCardsData = await robloxAPI.getPaymentCards(cleanCookie);
       
       // Сформировать полный объект аккаунта
       const account: RobloxAccount = {
