@@ -55,7 +55,7 @@ export async function validateCookies(cookies: string[]): Promise<void> {
             ? `✓ ${accountInfo.username} (ID: ${accountInfo.userId}) - Valid`
             : `✗ Invalid cookie - Failed to authenticate`
         );
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error validating cookie:", error);
         
         // Store invalid result
@@ -81,7 +81,7 @@ export async function validateCookies(cookies: string[]): Promise<void> {
         queueService.processingComplete(false);
         
         // Add to log
-        queueService.addLogEntry(`✗ Invalid cookie - ${error.message}`);
+        queueService.addLogEntry(`✗ Invalid cookie - ${error.message || 'Unknown error'}`);
       }
     });
   }
@@ -130,8 +130,8 @@ async function validateCookie(cookie: string): Promise<RobloxAccount> {
       avatarUrl: `https://www.roblox.com/headshot-thumbnail/image?userId=${userInfo.UserID}&width=150&height=150`,
       processedAt: new Date().toISOString(),
     };
-  } catch (error) {
-    throw new Error(`Validation failed: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(`Validation failed: ${error.message || 'Unknown error'}`);
   }
 }
 
@@ -153,8 +153,8 @@ async function fetchUserInfo(cookie: string): Promise<any> {
     }
     
     return await response.json();
-  } catch (error) {
-    throw new Error(`Failed to fetch user info: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(`Failed to fetch user info: ${error.message || 'Unknown error'}`);
   }
 }
 
@@ -167,7 +167,7 @@ async function fetchRobuxInfo(cookie: string): Promise<any> {
   try {
     const response = await fetch(`${ROBLOX_API_BASE}${ROBLOX_ROBUX_ENDPOINT}`, {
       headers: {
-        Cookie: `.ROBLOSECURITY=${cookie}`,
+        Cookie: formatCookie(cookie),
       },
     });
     
@@ -176,8 +176,8 @@ async function fetchRobuxInfo(cookie: string): Promise<any> {
     }
     
     return await response.json();
-  } catch (error) {
-    throw new Error(`Failed to fetch Robux info: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(`Failed to fetch Robux info: ${error.message || 'Unknown error'}`);
   }
 }
 
@@ -192,7 +192,7 @@ async function checkPremiumStatus(cookie: string, userId: number): Promise<boole
     const endpoint = ROBLOX_PREMIUM_ENDPOINT.replace("{userId}", userId.toString());
     const response = await fetch(`${ROBLOX_API_BASE}${endpoint}`, {
       headers: {
-        Cookie: `.ROBLOSECURITY=${cookie}`,
+        Cookie: formatCookie(cookie),
       },
     });
     
@@ -200,10 +200,10 @@ async function checkPremiumStatus(cookie: string, userId: number): Promise<boole
       return false;
     }
     
-    const data = await response.json();
+    const data: any = await response.json();
     return data.isPremium || false;
-  } catch (error) {
-    console.error(`Failed to check premium status: ${error.message}`);
+  } catch (error: any) {
+    console.error(`Failed to check premium status: ${error.message || 'Unknown error'}`);
     return false;
   }
 }
@@ -223,7 +223,7 @@ async function checkForItem(cookie: string, userId: number, assetId: string): Pr
     
     const response = await fetch(`${ROBLOX_API_BASE}${endpoint}`, {
       headers: {
-        Cookie: `.ROBLOSECURITY=${cookie}`,
+        Cookie: formatCookie(cookie),
       },
     });
     
@@ -231,10 +231,10 @@ async function checkForItem(cookie: string, userId: number, assetId: string): Pr
       return false;
     }
     
-    const data = await response.json();
+    const data: any = await response.json();
     return data.data && data.data.length > 0;
-  } catch (error) {
-    console.error(`Failed to check for item ${assetId}: ${error.message}`);
+  } catch (error: any) {
+    console.error(`Failed to check for item ${assetId}: ${error.message || 'Unknown error'}`);
     return false;
   }
 }
